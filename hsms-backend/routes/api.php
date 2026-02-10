@@ -66,8 +66,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('parents/{id}', [ParentController::class, 'destroy']);
 
         // Timetables (Admin can manage all)
-        Route::apiResource('timetables', TimetableController::class);
+        // Specific routes must come before apiResource to avoid conflicts
         Route::get('timetables/class/{classId}', [TimetableController::class, 'getByClass']);
+        Route::apiResource('timetables', TimetableController::class);
 
         // Exams (Admin can manage all)
         Route::apiResource('exams', ExamController::class);

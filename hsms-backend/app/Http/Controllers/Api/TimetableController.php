@@ -44,6 +44,24 @@ class TimetableController extends Controller
         ]);
     }
 
+    // Get single timetable entry (Admin)
+    public function show($id)
+    {
+        $timetable = Timetable::with(['classRoom', 'subject', 'teacher.user'])->find($id);
+
+        if (!$timetable) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Timetable entry not found'
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $timetable
+        ]);
+    }
+
     // Get timetable for logged-in teacher
     public function getMyTimetable(Request $request)
     {

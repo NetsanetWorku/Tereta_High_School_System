@@ -1,6 +1,20 @@
 # Current Issues Status & Solutions
 
-## Issue 1: PlusIcon Error ❌ NEEDS FIX
+## Issue 1: Timetable 404 Error ✅ FIXED
+
+**Error**: `Request failed with status code 404` when fetching timetable
+
+**Root Cause**: Route ordering conflict - `apiResource` was matching `/timetables/class/{id}` before the specific route
+
+**Solution Applied**:
+1. Reordered routes - specific routes now come before `apiResource`
+2. Added missing `show()` method to TimetableController
+
+**Status**: Fixed - restart backend server to apply changes
+
+---
+
+## Issue 2: PlusIcon Error ❌ NEEDS FIX
 
 **Error**: `ReferenceError: PlusIcon is not defined`
 
@@ -17,7 +31,7 @@ npm run dev
 
 ---
 
-## Issue 2: Email Not Sending ⏳ WAITING FOR USER
+## Issue 3: Email Not Sending ⏳ WAITING FOR USER
 
 **Problem**: Emails are not being sent to actual email addresses
 
@@ -62,7 +76,7 @@ Register a new user and check your email inbox!
 
 ---
 
-## Issue 3: Reopen Closed Conversations ✅ ALREADY FIXED
+## Issue 4: Reopen Closed Conversations ✅ ALREADY FIXED
 
 **Status**: Feature is already implemented and working
 
@@ -84,7 +98,7 @@ Register a new user and check your email inbox!
 
 ---
 
-## Issue 4: SMS Notifications 📱 OPTIONAL
+## Issue 5: SMS Notifications 📱 OPTIONAL
 
 **Status**: SMS system is implemented but requires Twilio configuration
 
@@ -105,7 +119,7 @@ Register a new user and check your email inbox!
 
 ---
 
-## Issue 5: Security Hardening 🔒 IN PROGRESS
+## Issue 6: Security Hardening 🔒 IN PROGRESS
 
 **Status**: Security guide created, implementation pending
 
@@ -122,6 +136,8 @@ Register a new user and check your email inbox!
 ## Quick Action Checklist
 
 ### Immediate (Do Now):
+- [x] Fix timetable 404 error (route ordering fixed)
+- [ ] Restart backend server to apply timetable fix
 - [ ] Clear Next.js cache to fix PlusIcon error
 - [ ] Get Gmail App Password
 - [ ] Update `.env` with Gmail credentials
