@@ -3,16 +3,7 @@
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return response()->json([
-        'status' => 'running',
-        'message' => 'High School Management System API',
-        'version' => app()->version(),
-        'timestamp' => now()->toDateTimeString(),
-        'endpoints' => [
-            'api' => url('/api'),
-            'documentation' => 'API endpoints available at /api/*'
-        ]
-    ]);
+    return view('welcome');
 });
 
 // Test route to view last email from log
