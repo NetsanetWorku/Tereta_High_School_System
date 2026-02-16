@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>High School Management System - API</title>
+    <title>Tereta High School Management System - API</title>
     <style>
         * {
             margin: 0;
