@@ -17,7 +17,9 @@ class Student extends Model
         'gender',
         'previous_school',
         'grade_8_result',
-        'grade_8_evaluation'
+        'grade_8_evaluation',
+        'guardian_name',
+        'guardian_phone'
     ];
 
     /**

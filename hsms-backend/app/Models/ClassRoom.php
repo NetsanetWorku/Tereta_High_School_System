@@ -11,7 +11,9 @@ class ClassRoom extends Model
 
     protected $fillable = [
         'name',
-        'section'
+        'section',
+        'grade',
+        'capacity'
     ];
 
     /**

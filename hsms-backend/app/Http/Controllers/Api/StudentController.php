@@ -22,8 +22,14 @@ class StudentController extends Controller
                 'student_code' => $student->student_code,
                 'class_id' => $student->class_id,
                 'grade' => $student->grade,
-                'class_name' => $student->classRoom ? $student->classRoom->name : null,
-                'class_section' => $student->classRoom ? $student->classRoom->section : null,
+                'guardian_name' => $student->guardian_name,
+                'guardian_phone' => $student->guardian_phone,
+                'class' => $student->classRoom ? [
+                    'id' => $student->classRoom->id,
+                    'name' => $student->classRoom->name,
+                    'section' => $student->classRoom->section,
+                    'grade' => $student->classRoom->grade
+                ] : null,
                 'user_id' => $student->user_id,
                 'created_at' => $student->created_at,
                 'updated_at' => $student->updated_at
@@ -131,9 +137,13 @@ class StudentController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'name'     => 'sometimes|string|max:255',
-            'email'    => 'sometimes|email|unique:users,email,' . $student->user_id,
-            'class_id' => 'sometimes|exists:class_rooms,id'
+            'name'           => 'sometimes|string|max:255',
+            'email'          => 'sometimes|email|unique:users,email,' . $student->user_id,
+            'student_code'   => 'sometimes|string|unique:students,student_code,' . $id,
+            'class_id'       => 'sometimes|nullable|exists:class_rooms,id',
+            'grade'          => 'sometimes|string',
+            'guardian_name'  => 'sometimes|string|max:255',
+            'guardian_phone' => 'sometimes|string|max:20'
         ]);
 
         if ($validator->fails()) {
@@ -144,14 +154,23 @@ class StudentController extends Controller
         }
 
         // Update user info
-        $student->user->update($request->only('name', 'email'));
+        if ($request->has('name') || $request->has('email')) {
+            $student->user->update($request->only('name', 'email'));
+        }
 
         // Update student info
-        $student->update($request->only('class_id'));
+        $student->update($request->only([
+            'student_code',
+            'class_id',
+            'grade',
+            'guardian_name',
+            'guardian_phone'
+        ]));
 
         return response()->json([
             'success' => true,
-            'message' => 'Student updated successfully'
+            'message' => 'Student updated successfully',
+            'data' => $student->load('user', 'classRoom')
         ]);
     }
 

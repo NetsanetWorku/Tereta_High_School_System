@@ -23,6 +23,7 @@ class ParentController extends Controller
                 'phone' => $parent->phone,
                 'address' => $parent->address,
                 'emergency_contact' => $parent->emergency_contact,
+                'occupation' => $parent->occupation,
                 'user_id' => $parent->user_id,
                 'students' => $parent->students->map(function ($student) {
                     return [
@@ -54,7 +55,8 @@ class ParentController extends Controller
             'email'    => 'required|email|unique:users,email',
             'password' => 'required|min:6',
             'phone'    => 'required',
-            'address'  => 'nullable|string'
+            'address'  => 'nullable|string',
+            'emergency_contact' => 'nullable|string'
         ]);
 
         if ($validator->fails()) {
@@ -76,7 +78,8 @@ class ParentController extends Controller
         $parent = ParentModel::create([
             'user_id' => $user->id,
             'phone'   => $request->phone,
-            'address' => $request->address
+            'address' => $request->address,
+            'emergency_contact' => $request->emergency_contact
         ]);
 
         // Load user relationship
@@ -91,9 +94,110 @@ class ParentController extends Controller
                 'email' => $parent->user->email,
                 'phone' => $parent->phone,
                 'address' => $parent->address,
+                'emergency_contact' => $parent->emergency_contact,
                 'user_id' => $parent->user_id
             ]
         ], 201);
+    }
+
+    // 🔹 ADMIN: Get single parent
+    // GET /api/parents/{id}
+    public function show($id)
+    {
+        $parent = ParentModel::with(['user', 'students.user', 'students.classRoom'])->find($id);
+
+        if (!$parent) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Parent not found'
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $parent->id,
+                'name' => $parent->user->name ?? '',
+                'email' => $parent->user->email ?? '',
+                'phone' => $parent->phone,
+                'address' => $parent->address,
+                'emergency_contact' => $parent->emergency_contact,
+                'occupation' => $parent->occupation,
+                'user_id' => $parent->user_id,
+                'user' => $parent->user,
+                'students' => $parent->students->map(function ($student) {
+                    return [
+                        'id' => $student->id,
+                        'name' => $student->user->name ?? '',
+                        'email' => $student->user->email ?? '',
+                        'student_code' => $student->student_code,
+                        'class_id' => $student->class_id,
+                        'class_name' => $student->classRoom ? $student->classRoom->name : null,
+                    ];
+                }),
+            ]
+        ]);
+    }
+
+    // 🔹 ADMIN: Update parent
+    // PUT /api/parents/{id}
+    public function update(Request $request, $id)
+    {
+        $parent = ParentModel::find($id);
+
+        if (!$parent) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Parent not found'
+            ], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'name'  => 'sometimes|string|max:255',
+            'email' => 'sometimes|email|unique:users,email,' . $parent->user_id,
+            'phone' => 'sometimes|string|max:20',
+            'address' => 'sometimes|string',
+            'emergency_contact' => 'sometimes|string|max:20',
+            'occupation' => 'sometimes|string|max:255'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        // Update user table (name, email)
+        if ($request->has('name') || $request->has('email')) {
+            $parent->user->update($request->only('name', 'email'));
+        }
+
+        // Update parent table (parent-specific fields)
+        $parent->update($request->only([
+            'phone',
+            'address',
+            'emergency_contact',
+            'occupation'
+        ]));
+
+        // Reload the parent with user relationship
+        $parent->load('user');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Parent updated successfully',
+            'data' => [
+                'id' => $parent->id,
+                'name' => $parent->user->name,
+                'email' => $parent->user->email,
+                'phone' => $parent->phone,
+                'address' => $parent->address,
+                'emergency_contact' => $parent->emergency_contact,
+                'occupation' => $parent->occupation,
+                'user_id' => $parent->user_id
+            ]
+        ]);
     }
 
     // 🔹 ADMIN: Assign student to parent
@@ -125,10 +229,8 @@ class ParentController extends Controller
     // GET /api/parent/children
     public function myChildren(Request $request)
     {
-        $parent = $request->user()->parentModel;
-        
         $parent = ParentModel::where('user_id', $request->user()->id)
-            ->with(['students.classRoom'])
+            ->with(['students.classRoom', 'students.user'])
             ->first();
 
         if (!$parent) {
@@ -138,9 +240,23 @@ class ParentController extends Controller
             ], 404);
         }
 
+        $students = $parent->students->map(function ($student) {
+            return [
+                'id' => $student->id,
+                'student_code' => $student->student_code,
+                'user' => $student->user ? ['name' => $student->user->name, 'email' => $student->user->email] : null,
+                'class' => $student->classRoom ? [
+                    'id' => $student->classRoom->id,
+                    'name' => $student->classRoom->name,
+                    'section' => $student->classRoom->section,
+                    'grade' => $student->classRoom->grade,
+                ] : null,
+            ];
+        });
+
         return response()->json([
             'success' => true,
-            'data' => $parent->students
+            'data' => $students
         ]);
     }
 

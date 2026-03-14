@@ -157,7 +157,7 @@ class ExamController extends Controller
     // Teacher: Get students for a specific exam schedule
     public function getScheduleStudents($scheduleId)
     {
-        $schedule = ExamSchedule::with(['class', 'subject'])->findOrFail($scheduleId);
+        $schedule = ExamSchedule::with(['class', 'subject', 'exam'])->findOrFail($scheduleId);
         
         $students = Student::where('class_id', $schedule->class_id)
             ->with(['user'])
@@ -175,10 +175,10 @@ class ExamController extends Controller
                 'id' => $student->id,
                 'name' => $student->user->name ?? 'Unknown',
                 'student_code' => $student->student_code,
-                'marks_obtained' => $result->marks_obtained ?? null,
-                'grade' => $result->grade ?? null,
-                'remarks' => $result->remarks ?? null,
-                'result_id' => $result->id ?? null,
+                'marks_obtained' => $result ? $result->marks_obtained : null,
+                'grade' => $result ? $result->grade : null,
+                'remarks' => $result ? $result->remarks : null,
+                'result_id' => $result ? $result->id : null,
             ];
         });
 

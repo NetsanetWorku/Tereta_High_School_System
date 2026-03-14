@@ -20,17 +20,22 @@ class ClassController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'name'    => 'required|string',
-            'section' => 'required|string'
+            'name'     => 'required|string',
+            'section'  => 'required|string',
+            'grade'    => 'nullable|string',
+            'capacity' => 'nullable|integer|min:1'
         ]);
 
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
         }
 
-        $class = ClassRoom::create($request->all());
+        $classData = $request->only(['name', 'section', 'grade', 'capacity']);
+        
+        $class = ClassRoom::create($classData);
 
         return response()->json([
+            'success' => true,
             'message' => 'Class created successfully',
             'data'    => $class
         ], 201);
@@ -55,10 +60,24 @@ class ClassController extends Controller
             return response()->json(['message'=>'Class not found'], 404);
         }
 
-        $class->update($request->only('name','section'));
+        $validator = Validator::make($request->all(), [
+            'name'     => 'sometimes|string',
+            'section'  => 'sometimes|string',
+            'grade'    => 'nullable|string',
+            'capacity' => 'nullable|integer|min:1'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
+
+        $updateData = $request->only(['name', 'section', 'grade', 'capacity']);
+        $class->update($updateData);
 
         return response()->json([
-            'message'=>'Class updated successfully'
+            'success' => true,
+            'message'=>'Class updated successfully',
+            'data' => $class
         ]);
     }
 

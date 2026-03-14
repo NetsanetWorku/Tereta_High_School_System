@@ -26,6 +26,22 @@ class AssignmentSubmission extends Model
         'graded_at' => 'datetime',
     ];
 
+    protected $appends = ['grade'];
+
+    public function getGradeAttribute()
+    {
+        if ($this->marks_obtained === null || !$this->assignment) {
+            return null;
+        }
+        
+        $totalMarks = $this->assignment->total_marks;
+        if ($totalMarks == 0) {
+            return 0;
+        }
+        
+        return round(($this->marks_obtained / $totalMarks) * 100, 2);
+    }
+
     public function assignment()
     {
         return $this->belongsTo(Assignment::class);

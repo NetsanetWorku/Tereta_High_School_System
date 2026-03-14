@@ -115,7 +115,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎓 High School Management System</h1>
+            <h1>🎓 Tereta High School Management System</h1>
             <p>Backend API Server</p>
             <div class="status-badge pulse">● Server Running</div>
         </div>

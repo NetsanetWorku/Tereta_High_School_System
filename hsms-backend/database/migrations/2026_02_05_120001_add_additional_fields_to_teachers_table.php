@@ -15,6 +15,7 @@ return new class extends Migration
             $table->string('subject_specialization')->nullable()->after('user_id');
             $table->string('qualification')->nullable()->after('subject_specialization');
             $table->string('experience_years')->nullable()->after('qualification');
+            $table->date('hire_date')->nullable()->after('experience_years');
         });
     }
 
@@ -24,7 +25,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('teachers', function (Blueprint $table) {
-            $table->dropColumn(['subject_specialization', 'qualification', 'experience_years']);
+            $table->dropColumn(['subject_specialization', 'qualification', 'experience_years', 'hire_date']);
         });
     }
 };

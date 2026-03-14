@@ -135,13 +135,23 @@ class MessageController extends Controller
             return response()->json(['success' => false, 'message' => 'Only parents and teachers can start conversations'], 403);
         }
 
-        $validator = Validator::make($request->all(), [
-            'teacher_id' => 'required_if:role,parent|nullable|exists:teachers,id',
-            'parent_id' => 'required_if:role,teacher|nullable|exists:parent_models,id',
-            'student_id' => 'nullable|exists:students,id',
-            'subject' => 'required|string|max:255',
-            'message' => 'required|string',
-        ]);
+        // Different validation based on user role
+        if ($user->role === 'parent') {
+            $validator = Validator::make($request->all(), [
+                'teacher_id' => 'required|exists:teachers,id',
+                'student_id' => 'nullable|exists:students,id',
+                'subject' => 'required|string|max:255',
+                'message' => 'required|string',
+            ]);
+        } else {
+            // Teacher
+            $validator = Validator::make($request->all(), [
+                'parent_id' => 'required|exists:parents,id',
+                'student_id' => 'nullable|exists:students,id',
+                'subject' => 'required|string|max:255',
+                'message' => 'required|string',
+            ]);
+        }
 
         if ($validator->fails()) {
             return response()->json([

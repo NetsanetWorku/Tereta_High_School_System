@@ -25,9 +25,15 @@ class AuthController extends Controller
             'name'     => 'required|string|max:255',
             'email'    => 'required|email|unique:users,email',
             'phone'    => 'nullable|string|max:20',
-            'password' => 'required|string|min:6|confirmed',
             'role'     => 'required|in:student,teacher,parent'
         ];
+
+        // Password is optional for new students (system-generated), required for others
+        if ($request->role === 'student' && $request->registration_type === 'new') {
+            $rules['password'] = 'nullable|string|min:6';
+        } else {
+            $rules['password'] = 'required|string|min:6';
+        }
 
         // Add role-specific validation rules
         switch ($request->role) {
@@ -76,12 +82,22 @@ class AuthController extends Controller
             ], 422);
         }
 
+        // Generate password for new students if not provided
+        $password = $request->password;
+        $generatedPassword = null;
+        
+        if ($request->role === 'student' && $request->registration_type === 'new' && !$password) {
+            // Generate a secure random password for new students
+            $generatedPassword = Str::random(12);
+            $password = $generatedPassword;
+        }
+
         // Create user
         $user = User::create([
             'name'     => $request->name,
             'email'    => $request->email,
             'phone'    => $request->phone,
-            'password' => Hash::make($request->password),
+            'password' => Hash::make($password),
             'role'     => $request->role,
             'verification_code' => rand(100000, 999999),
             'verification_code_expires_at' => now()->addHours(24),
@@ -100,9 +116,9 @@ class AuthController extends Controller
 
             if ($request->role === 'student') {
                 if ($request->verification_method === 'phone') {
-                    $user->notify(new RegistrationSMS($user->phone, $studentId, $user->verification_code));
+                    $user->notify(new RegistrationSMS($user->phone, $studentId, $user->verification_code, $generatedPassword));
                 } else {
-                    $user->notify(new RegistrationSuccess($studentId, $user->verification_code));
+                    $user->notify(new RegistrationSuccess($studentId, $user->verification_code, $generatedPassword));
                 }
             } else {
                 // Send email notification

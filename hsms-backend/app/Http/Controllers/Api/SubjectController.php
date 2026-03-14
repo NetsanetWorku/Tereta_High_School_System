@@ -20,18 +20,25 @@ class SubjectController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'name' => 'required|unique:subjects,name'
+            'name' => 'required|unique:subjects,name',
+            'code' => 'required|unique:subjects,code',
+            'credits' => 'nullable|integer|min:1',
+            'description' => 'nullable|string'
         ]);
 
         if ($validator->fails()) {
-            return response()->json($validator->errors(), 422);
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
         }
 
         $subject = Subject::create($request->all());
 
         return response()->json([
-            'message'=>'Subject created successfully',
-            'data'=>$subject
+            'success' => true,
+            'message' => 'Subject created successfully',
+            'data' => $subject
         ], 201);
     }
 
@@ -51,13 +58,32 @@ class SubjectController extends Controller
         $subject = Subject::find($id);
 
         if (!$subject) {
-            return response()->json(['message'=>'Subject not found'], 404);
+            return response()->json([
+                'success' => false,
+                'message' => 'Subject not found'
+            ], 404);
         }
 
-        $subject->update($request->only('name'));
+        $validator = Validator::make($request->all(), [
+            'name' => 'sometimes|unique:subjects,name,' . $id,
+            'code' => 'sometimes|unique:subjects,code,' . $id,
+            'credits' => 'nullable|integer|min:1',
+            'description' => 'nullable|string'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $subject->update($request->only(['name', 'code', 'credits', 'description']));
 
         return response()->json([
-            'message'=>'Subject updated successfully'
+            'success' => true,
+            'message' => 'Subject updated successfully',
+            'data' => $subject
         ]);
     }
 
@@ -66,13 +92,17 @@ class SubjectController extends Controller
         $subject = Subject::find($id);
 
         if (!$subject) {
-            return response()->json(['message'=>'Subject not found'], 404);
+            return response()->json([
+                'success' => false,
+                'message' => 'Subject not found'
+            ], 404);
         }
 
         $subject->delete();
 
         return response()->json([
-            'message'=>'Subject deleted successfully'
+            'success' => true,
+            'message' => 'Subject deleted successfully'
         ]);
     }
 }

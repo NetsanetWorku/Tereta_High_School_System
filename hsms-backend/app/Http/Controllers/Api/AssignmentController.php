@@ -30,7 +30,10 @@ class AssignmentController extends Controller
         $teacher = Teacher::where('user_id', $user->id)->first();
 
         if (!$teacher) {
-            return response()->json(['message' => 'Teacher not found'], 404);
+            return response()->json([
+                'success' => false,
+                'message' => 'Teacher not found'
+            ], 404);
         }
 
         $assignments = Assignment::with(['subject', 'class', 'submissions'])
@@ -38,14 +41,18 @@ class AssignmentController extends Controller
             ->orderBy('due_date', 'desc')
             ->get();
 
-        // Add submission counts
+        // Add submission counts and rename class to class_room for consistency
         $assignments->each(function ($assignment) {
+            $assignment->class_room = $assignment->class;
             $assignment->total_students = Student::where('class_id', $assignment->class_id)->count();
-            $assignment->submitted_count = $assignment->submissions()->where('status', '!=', 'pending')->count();
-            $assignment->graded_count = $assignment->submissions()->where('status', 'graded')->count();
+            $assignment->submissions_count = $assignment->submissions()->whereNotNull('submitted_at')->count();
+            $assignment->pending_submissions = $assignment->submissions()->whereNull('graded_at')->whereNotNull('submitted_at')->count();
         });
 
-        return response()->json(['data' => $assignments]);
+        return response()->json([
+            'success' => true,
+            'data' => $assignments
+        ]);
     }
 
     // Create assignment (Teacher)
@@ -55,7 +62,10 @@ class AssignmentController extends Controller
         $teacher = Teacher::where('user_id', $user->id)->first();
 
         if (!$teacher) {
-            return response()->json(['message' => 'Teacher not found'], 404);
+            return response()->json([
+                'success' => false,
+                'message' => 'Teacher not found'
+            ], 404);
         }
 
         $validated = $request->validate([
@@ -64,13 +74,40 @@ class AssignmentController extends Controller
             'subject_id' => 'required|exists:subjects,id',
             'class_id' => 'required|exists:class_rooms,id',
             'due_date' => 'required|date',
-            'total_marks' => 'required|integer|min:1',
+            'max_marks' => 'nullable|integer|min:1',
+            'total_marks' => 'nullable|integer|min:1',
+            'instructions' => 'nullable|string',
             'attachment_url' => 'nullable|string',
         ]);
 
-        $validated['teacher_id'] = $teacher->id;
+        // VALIDATION: Check if teacher is assigned to teach this subject to this class
+        $isAssigned = DB::table('teacher_subjects')
+            ->where('teacher_id', $teacher->id)
+            ->where('subject_id', $validated['subject_id'])
+            ->where('class_id', $validated['class_id'])
+            ->exists();
 
-        $assignment = Assignment::create($validated);
+        if (!$isAssigned) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not assigned to teach this subject to this class'
+            ], 403);
+        }
+
+        // Use max_marks if provided, otherwise use total_marks, default to 100
+        $totalMarks = $validated['max_marks'] ?? $validated['total_marks'] ?? 100;
+
+        $assignment = Assignment::create([
+            'title' => $validated['title'],
+            'description' => $validated['description'],
+            'subject_id' => $validated['subject_id'],
+            'class_id' => $validated['class_id'],
+            'teacher_id' => $teacher->id,
+            'due_date' => $validated['due_date'],
+            'total_marks' => $totalMarks,
+            'attachment_url' => $validated['attachment_url'] ?? null,
+        ]);
+
         $assignment->load(['subject', 'class']);
 
         // Create pending submissions for all students in the class
@@ -84,6 +121,7 @@ class AssignmentController extends Controller
         }
 
         return response()->json([
+            'success' => true,
             'message' => 'Assignment created successfully',
             'data' => $assignment
         ], 201);
@@ -92,7 +130,19 @@ class AssignmentController extends Controller
     // Update assignment (Teacher)
     public function update(Request $request, $id)
     {
+        $user = $request->user();
+        $teacher = Teacher::where('user_id', $user->id)->first();
+
+        if (!$teacher) {
+            return response()->json(['success' => false, 'message' => 'Teacher not found'], 404);
+        }
+
         $assignment = Assignment::findOrFail($id);
+
+        // Ownership check: only the teacher who created it can update
+        if ($assignment->teacher_id !== $teacher->id) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
 
         $validated = $request->validate([
             'title' => 'string|max:255',
@@ -112,19 +162,44 @@ class AssignmentController extends Controller
     }
 
     // Delete assignment (Teacher)
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
+        $user = $request->user();
+        $teacher = Teacher::where('user_id', $user->id)->first();
+
+        if (!$teacher) {
+            return response()->json(['success' => false, 'message' => 'Teacher not found'], 404);
+        }
+
         $assignment = Assignment::findOrFail($id);
+
+        // Ownership check
+        if ($assignment->teacher_id !== $teacher->id) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
         $assignment->delete();
 
         return response()->json(['message' => 'Assignment deleted successfully']);
     }
 
     // Get assignment submissions (Teacher)
-    public function getSubmissions($assignmentId)
+    public function getSubmissions(Request $request, $assignmentId)
     {
+        $user = $request->user();
+        $teacher = Teacher::where('user_id', $user->id)->first();
+
+        if (!$teacher) {
+            return response()->json(['success' => false, 'message' => 'Teacher not found'], 404);
+        }
+
         $assignment = Assignment::with(['subject', 'class'])->findOrFail($assignmentId);
-        
+
+        // Ownership check
+        if ($assignment->teacher_id !== $teacher->id) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
         $submissions = AssignmentSubmission::with(['student.user'])
             ->where('assignment_id', $assignmentId)
             ->get();
@@ -138,12 +213,32 @@ class AssignmentController extends Controller
     // Grade submission (Teacher)
     public function gradeSubmission(Request $request, $submissionId)
     {
-        $submission = AssignmentSubmission::findOrFail($submissionId);
+        $user = $request->user();
+        $teacher = Teacher::where('user_id', $user->id)->first();
+
+        if (!$teacher) {
+            return response()->json(['success' => false, 'message' => 'Teacher not found'], 404);
+        }
+
+        $submission = AssignmentSubmission::with('assignment')->findOrFail($submissionId);
+
+        // Ownership check: only the assignment's teacher can grade
+        if ($submission->assignment->teacher_id !== $teacher->id) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
 
         $validated = $request->validate([
             'marks_obtained' => 'required|integer|min:0',
             'feedback' => 'nullable|string',
         ]);
+
+        // Ensure marks don't exceed total_marks
+        if ($validated['marks_obtained'] > $submission->assignment->total_marks) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Marks cannot exceed total marks (' . $submission->assignment->total_marks . ')'
+            ], 422);
+        }
 
         $submission->update([
             'marks_obtained' => $validated['marks_obtained'],
@@ -173,8 +268,9 @@ class AssignmentController extends Controller
             ->orderBy('due_date', 'desc')
             ->get();
 
-        // Get student's submissions
-        $submissions = AssignmentSubmission::where('student_id', $student->id)
+        // Get student's submissions with assignment relationship for grade calculation
+        $submissions = AssignmentSubmission::with('assignment')
+            ->where('student_id', $student->id)
             ->get()
             ->keyBy('assignment_id');
 
@@ -230,6 +326,20 @@ class AssignmentController extends Controller
     // Get child's assignments (Parent)
     public function getChildAssignments(Request $request, $studentId)
     {
+        // Verify the requesting parent actually owns this student
+        $parent = \App\Models\ParentModel::where('user_id', $request->user()->id)
+            ->with('students')
+            ->first();
+
+        if (!$parent) {
+            return response()->json(['success' => false, 'message' => 'Parent profile not found'], 404);
+        }
+
+        $ownsStudent = $parent->students->contains('id', $studentId);
+        if (!$ownsStudent) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
         $student = Student::findOrFail($studentId);
 
         $assignments = Assignment::with(['subject', 'class', 'teacher.user'])
@@ -237,8 +347,9 @@ class AssignmentController extends Controller
             ->orderBy('due_date', 'desc')
             ->get();
 
-        // Get student's submissions
-        $submissions = AssignmentSubmission::where('student_id', $studentId)
+        // Get student's submissions with assignment relationship for grade calculation
+        $submissions = AssignmentSubmission::with('assignment')
+            ->where('student_id', $studentId)
             ->get()
             ->keyBy('assignment_id');
 

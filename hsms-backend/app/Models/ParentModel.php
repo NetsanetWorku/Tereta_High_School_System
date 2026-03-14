@@ -15,7 +15,8 @@ class ParentModel extends Model
         'user_id',
         'phone',
         'address',
-        'emergency_contact'
+        'emergency_contact',
+        'occupation'
     ];
 
     /**

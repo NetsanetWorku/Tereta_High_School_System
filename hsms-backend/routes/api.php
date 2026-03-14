@@ -23,6 +23,10 @@ use App\Http\Controllers\Api\UserController;
 | PUBLIC ROUTES
 |--------------------------------------------------------------------------
 */
+Route::get('ping', function () {
+    return response()->json(['message' => 'Backend is running!', 'timestamp' => now()]);
+});
+
 Route::post('register', [AuthController::class, 'register']);
 Route::post('login', [AuthController::class, 'login']);
 
@@ -62,6 +66,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('parents', [ParentController::class, 'index']);
         Route::post('parents', [ParentController::class, 'store']);
+        Route::get('parents/{id}', [ParentController::class, 'show']);
+        Route::put('parents/{id}', [ParentController::class, 'update']);
         Route::post('parents/assign-student', [ParentController::class, 'assignStudent']);
         Route::delete('parents/{id}', [ParentController::class, 'destroy']);
 
@@ -152,13 +158,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('child-assignments/{studentId}', [AssignmentController::class, 'getChildAssignments']);
     });
 
-    // MESSAGING (Parent & Teacher)
-    Route::get('conversations', [MessageController::class, 'getConversations']);
-    Route::get('conversations/{id}/messages', [MessageController::class, 'getMessages']);
-    Route::post('conversations/{id}/messages', [MessageController::class, 'sendMessage']);
-    Route::put('conversations/{id}/close', [MessageController::class, 'closeConversation']);
-    Route::put('conversations/{id}/reopen', [MessageController::class, 'reopenConversation']);
-    
+    // MESSAGING (Parent & Teacher only)
+    Route::middleware('role:parent,teacher')->group(function () {
+        Route::get('conversations', [MessageController::class, 'getConversations']);
+        Route::get('conversations/{id}/messages', [MessageController::class, 'getMessages']);
+        Route::post('conversations/{id}/messages', [MessageController::class, 'sendMessage']);
+        Route::put('conversations/{id}/close', [MessageController::class, 'closeConversation']);
+        Route::put('conversations/{id}/reopen', [MessageController::class, 'reopenConversation']);
+    });
+
     // Parent-specific messaging routes
     Route::middleware('role:parent')->group(function () {
         Route::post('conversations', [MessageController::class, 'startConversation']);
