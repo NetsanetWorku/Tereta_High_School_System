@@ -175,14 +175,14 @@
                 <strong>Messaging</strong><br>
                 <code>GET /api/conversations</code> - Get conversations<br>
                 <code>POST /api/conversations</code> - Start conversation<br>
-                <code>POST /api/conversations/{id}/messages</code> - Send message
+                <code>POST /api/conversations/{id}/messages</code> - Recieve message
             </div>
         </div>
 
         <div class="footer">
             <p>🚀 API Base URL: <strong>{{ url('/api') }}</strong></p>
             <p style="margin-top: 10px; font-size: 0.9em;">
-                All endpoints require authentication via Sanctum tokens
+                All endpoints require authentication for security!
             </p>
         </div>
     </div>

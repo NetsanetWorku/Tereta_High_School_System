@@ -247,7 +247,9 @@ class AuthController extends Controller
         $user = Auth::user();
 
         // Check if user is approved
-        if (!$user->is_approved) {
+        // In local/dev we can bypass approval for quicker testing.
+        // Set ALLOW_LOGIN_BEFORE_APPROVAL=true in .env to enable.
+        if (!$user->is_approved && !env('ALLOW_LOGIN_BEFORE_APPROVAL', false)) {
             Auth::logout();
             return response()->json([
                 'success' => false,
@@ -312,7 +314,9 @@ class AuthController extends Controller
         Auth::login($user);
 
         // Check if user is approved
-        if (!$user->is_approved) {
+        // In local/dev we can bypass approval for quicker testing.
+        // Set ALLOW_LOGIN_BEFORE_APPROVAL=true in .env to enable.
+        if (!$user->is_approved && !env('ALLOW_LOGIN_BEFORE_APPROVAL', false)) {
             Auth::logout();
             return response()->json([
                 'success' => false,
