@@ -47,7 +47,7 @@ export default function Navbar() {
                 </span>
                 <button
                   onClick={logout}
-                  className="bg-blue-700 hover:bg-blue-800 px-4 py-2 rounded text-sm"
+                  className="bg-blue-700 hover:bg-green-800 px-4 py-2 rounded text-sm"
                 >
                   Logout
                 </button>
@@ -55,11 +55,11 @@ export default function Navbar() {
             ) : (
               <>
                 <span className="text-blue-200">|</span>
-                <Link href="/login" className="hover:text-blue-200">
+                <Link href="/login" className="hover:text-green-500">
                   Login
                 </Link>
                 <span className="text-blue-200">|</span>
-                <Link href="/register" className="hover:text-blue-200">
+                <Link href="/register" className="hover:text-green-500">
                   Register
                 </Link>
               </>
